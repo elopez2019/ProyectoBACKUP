@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2'); // Asegúrate de estar usando mysql2 en lugar de mysql
+const bcrypt = require('bcrypt');
 
 const app = express();
 const port = 3000;
@@ -402,4 +403,38 @@ app.get('/metrics', async (req, res) => {
     }
 });
 
+/// ---------------------- LOGIN ----------------------
+
+// Ruta para registrar un nuevo usuario
+app.post('/register', async (req, res) => {
+    const { username, password } = req.body;
+    const hashedPassword = await bcrypt.hash(password, 10);
+  
+    const query = `INSERT INTO users (username, password) VALUES (?, ?)`;
+    db.query(query, [username, hashedPassword], (err, result) => {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    });
+  });
+  
+  // Ruta para el login
+  app.post('/login', (req, res) => {
+    const { username, password } = req.body;
+  
+    const query = `SELECT * FROM users WHERE username = ?`;
+    db.query(query, [username], async (err, results) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (results.length === 0) return res.status(400).json({ success: false, message: 'Usuario no encontrado' });
+  
+      const user = results[0];
+      const isMatch = await bcrypt.compare(password, user.password);
+  
+      if (isMatch) {
+        res.json({ success: true });
+      } else {
+        res.status(400).json({ success: false, message: 'Contraseña incorrecta' });
+      }
+    });
+  });
+  
 
